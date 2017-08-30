@@ -28,17 +28,21 @@ public class LocationService extends Service {
     Intent intent;
     GoogleApiClient googleApiClient;
     LocationRequest locationRequest;
+    LocationDatabase db;
 
     @Override
     public void onCreate() {
         super.onCreate();
         intent = new Intent(BROADCAST_ACTION);
+        db = new LocationDatabase(getApplicationContext());
         setupLocationRequest();
     }
 
     LocationListener locationListener = new LocationListener() {
         @Override
         public void onLocationChanged(Location location) {
+            db.saveRecord(location.getLatitude(), location.getLongitude(), location.getProvider());
+            db.test();
             intent.putExtra("Latitude", location.getLatitude());
             intent.putExtra("Longitude", location.getLongitude());
             LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(intent);
@@ -77,8 +81,8 @@ public class LocationService extends Service {
     protected synchronized void setupLocationRequest() {
         locationRequest = new LocationRequest();
         locationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
-        locationRequest.setInterval(60000);
-        locationRequest.setFastestInterval(10000);
+        locationRequest.setInterval(1000);
+        locationRequest.setFastestInterval(1000);
         googleApiClient = new GoogleApiClient.Builder(getApplicationContext())
                 .addConnectionCallbacks(connectionCallbacks)
                 .addOnConnectionFailedListener(failedListener)
