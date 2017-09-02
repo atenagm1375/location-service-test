@@ -1,6 +1,7 @@
 package com.atena.test.locationservicetest;
 
 import android.Manifest;
+import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -15,9 +16,16 @@ import android.widget.Toast;
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.common.api.Result;
+import com.google.android.gms.common.api.ResultCallback;
+import com.google.android.gms.location.Geofence;
+import com.google.android.gms.location.GeofencingRequest;
 import com.google.android.gms.location.LocationListener;
 import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationServices;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Created by atena on 8/29/2017.
@@ -26,6 +34,7 @@ import com.google.android.gms.location.LocationServices;
 public class LocationService extends Service {
     public static final String BROADCAST_ACTION = "broadcast action";
     Intent intent;
+    PendingIntent pendingIntent;
     GoogleApiClient googleApiClient;
     LocationRequest locationRequest;
     LocationDatabase db;
@@ -49,6 +58,13 @@ public class LocationService extends Service {
         }
     };
 
+    ResultCallback resultCallback = new ResultCallback() {
+        @Override
+        public void onResult(@NonNull Result result) {
+            Toast.makeText(getApplicationContext(), "result: " + result.getStatus().toString(), Toast.LENGTH_SHORT).show();
+        }
+    };
+
     GoogleApiClient.ConnectionCallbacks connectionCallbacks = new GoogleApiClient.ConnectionCallbacks() {
         @Override
         public void onConnected(@Nullable Bundle bundle) {
@@ -63,6 +79,8 @@ public class LocationService extends Service {
                 return;
             }
             LocationServices.FusedLocationApi.requestLocationUpdates(googleApiClient, locationRequest, locationListener);
+            LocationServices.GeofencingApi.addGeofences(googleApiClient, createGeofencingRequest(),
+                    getGeofencePendingIntent()).setResultCallback(resultCallback);
         }
 
         @Override
@@ -81,13 +99,42 @@ public class LocationService extends Service {
     protected synchronized void setupLocationRequest() {
         locationRequest = new LocationRequest();
         locationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
-        locationRequest.setInterval(1000);
+        locationRequest.setInterval(10000);
         locationRequest.setFastestInterval(1000);
         googleApiClient = new GoogleApiClient.Builder(getApplicationContext())
                 .addConnectionCallbacks(connectionCallbacks)
                 .addOnConnectionFailedListener(failedListener)
                 .addApi(LocationServices.API).build();
         googleApiClient.connect();
+    }
+
+    private PendingIntent getGeofencePendingIntent() {
+        if (pendingIntent != null)
+            return pendingIntent;
+        Intent intent = new Intent(this, GeofencingIntentService.class);
+        return PendingIntent.getService(this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
+    }
+
+    private List createGeofenceList() {
+        List<Geofence> geofenceList = new ArrayList<Geofence>();
+        geofenceList.add(new Geofence.Builder()
+                .setRequestId("GeofenceLocation")
+                .setCircularRegion(
+                        35.712142, //Latitude
+                        51.4153748, //Longitude
+                        100)
+                .setLoiteringDelay(30000)
+                .setExpirationDuration(Geofence.NEVER_EXPIRE)
+                .setTransitionTypes(
+                        Geofence.GEOFENCE_TRANSITION_DWELL).build());
+        return geofenceList;
+    }
+
+    private GeofencingRequest createGeofencingRequest() {
+        GeofencingRequest.Builder builder = new GeofencingRequest.Builder();
+        builder.setInitialTrigger(GeofencingRequest.INITIAL_TRIGGER_DWELL);
+        builder.addGeofences(createGeofenceList());
+        return builder.build();
     }
 
     @Nullable
