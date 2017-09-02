@@ -120,8 +120,8 @@ public class LocationService extends Service {
         geofenceList.add(new Geofence.Builder()
                 .setRequestId("GeofenceLocation")
                 .setCircularRegion(
-                        35.712142, //Latitude
-                        51.4153748, //Longitude
+                        35.7189792, //Latitude
+                        51.431979, //Longitude
                         100)
                 .setLoiteringDelay(30000)
                 .setExpirationDuration(Geofence.NEVER_EXPIRE)
